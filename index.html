@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Artista de ilustraciones anime y waifus — Redes sociales">
+<meta name="theme-color" content="#0a040f">
+<title>▸ Elixir Digital ▸ Waifu Artist</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   ⚙️  ZONA DE EDICIÓN RÁPIDA — solo toca las variables de aquí
+   ============================================================ */
+:root{
+  --bg:          #0a040f;   /* fondo principal */
+  --bg-2:        #140a1e;   /* fondo secundario / degradados */
+  --card:        rgba(255,255,255,.045);
+  --card-border: rgba(255,255,255,.10);
+  --pink:        #ff2d78;   /* acento principal (hot pink) */
+  --pink-soft:   #ff5c9d;
+  --purple:      #a855f7;   /* acento secundario (violeta) */
+  --violet:      #7c3aed;
+  --text:        #f5ecff;
+  --muted:       rgba(245,236,255,.55);
+  --glow:        0 0 24px rgba(255,45,120,.45), 0 0 60px rgba(168,85,247,.25);
+}
+*,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+html{ scrollbar-color: var(--pink) var(--bg-2); }
+
+body{
+  min-height:100svh;
+  font-family:'Outfit',system-ui,sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(168,85,247,.16), transparent 60%),
+    radial-gradient(900px 500px at 8% 12%,  rgba(255,45,120,.12),  transparent 55%),
+    radial-gradient(700px 700px at 50% 120%, rgba(124,58,237,.14), transparent 60%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  background-attachment:fixed;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{ background:var(--pink); color:#fff; }
+
+/* particles canvas */
+#fx{ position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; }
+
+/* halo que sigue el cursor (desktop) */
+#cursor-glow{
+  position:fixed; width:340px; height:340px; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,45,120,.13), transparent 65%);
+  transform:translate(-50%,-50%); pointer-events:none; z-index:1;
+  transition:opacity .3s; opacity:0;
+}
+@media (hover:hover){ #cursor-glow{ opacity:1; } }
+
+/* ---------- layout ---------- */
+.page{
+  position:relative; z-index:2;
+  max-width:520px; margin:0 auto;
+  min-height:100svh;
+  display:flex; flex-direction:column;
+}
+
+/* ---------- BANNER ---------- */
+.banner{
+  position:relative;
+  height:clamp(150px, 34vw, 210px);
+  border-radius:0 0 26px 26px;
+  overflow:hidden;
+  background:
+    radial-gradient(160px 90px at 20% 110%, rgba(255,45,120,.55), transparent 70%),
+    radial-gradient(200px 120px at 80% -20%,  rgba(168,85,247,.55), transparent 70%),
+    linear-gradient(160deg,#2a0e3d 0%, #6b1140 55%, #1a0726 100%);
+  box-shadow:0 10px 50px rgba(255,45,120,.25);
+}
+.banner img{
+  position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; display:none;             /* ← se activa cuando pongas banner.jpg */
+}
+.banner.lived img{ display:block; }
+.banner::after{                               /* brillo que recorre el banner */
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.14) 50%, transparent 70%);
+  transform:translateX(-100%); animation:sweep 5.5s ease-in-out infinite;
+}
+@keyframes sweep{ 0%,60%{transform:translateX(-100%)} 90%,100%{transform:translateX(100%)} }
+
+/* ---------- AVATAR ---------- */
+.avatar-wrap{
+  position:relative;
+  width:132px; height:132px;
+  margin:-66px auto 0; z-index:3;
+}
+.avatar{
+  width:100%; height:100%; border-radius:50%;
+  object-fit:cover; display:none;
+  border:3px solid rgba(255,255,255,.85);
+  box-shadow:var(--glow);
+  animation:floaty 5s ease-in-out infinite;
+}
+.avatar-wrap.lived .avatar{ display:block; }
+.avatar-fallback{                             /* se ve si aún no subes avatar.jpg */
+  position:absolute; inset:0; border-radius:50%;
+  display:grid; place-items:center;
+  font-size:3rem; user-select:none;
+  background:linear-gradient(150deg, var(--pink) 20%, var(--violet) 90%);
+  border:3px solid rgba(255,255,255,.85);
+  box-shadow:var(--glow);
+}
+.avatar-wrap.lived .avatar-fallback{ display:none; }
+.avatar-wrap::before{                         /* aro giratorio */
+  content:""; position:absolute; inset:-8px; border-radius:50%;
+  background:conic-gradient(from 0deg, var(--pink), transparent 35%, var(--purple) 65%, transparent 90%, var(--pink));
+  animation:spin 6s linear infinite; z-index:-1;
+  filter:blur(2px); opacity:.9;
+}
+@keyframes spin{ to{ transform:rotate(360deg); } }
+@keyframes floaty{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+.badge{
+  position:absolute; bottom:4px; right:-6px;
+  background:linear-gradient(135deg,var(--pink),var(--purple));
+  font-size:.68rem; font-weight:600; letter-spacing:.5px;
+  padding:4px 9px; border-radius:99px;
+  border:2px solid var(--bg);
+  box-shadow:0 0 14px rgba(255,45,120,.6);
+}
+
+/* ---------- IDENTIDAD ---------- */
+.shrine{ text-align:center; padding:18px 22px 8px; }
+h1{
+  font-family:'Unbounded',sans-serif; font-weight:800;
+  font-size:clamp(1.5rem, 5.5vw, 1.9rem); line-height:1.15;
+  background:linear-gradient(92deg, #fff 10%, var(--pink-soft) 45%, var(--purple) 90%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 18px rgba(255,45,120,.35));
+}
+.handle{
+  margin-top:6px; color:var(--muted);
+  font-weight:500; letter-spacing:.4px; font-size:.95rem;
+}
+.handle b{ color:var(--pink-soft); font-weight:600; }
+
+/* bio con efecto máquina de escribir */
+.bio{
+  margin-top:12px; min-height:2.9em; color:var(--muted);
+  font-weight:300; line-height:1.45; font-size:.95rem; max-width:42ch; margin-inline:auto;
+}
+.bio .cursor{
+  display:inline-block; width:2px; height:1em; margin-left:2px;
+  background:var(--pink); vertical-align:-2px;
+  animation:blink .8s step-end infinite;
+}
+@keyframes blink{ 50%{ opacity:0 } }
+
+.pills{ margin-top:14px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+.pill{
+  font-size:.72rem; font-weight:600; letter-spacing:.6px; text-transform:uppercase;
+  padding:6px 13px; border-radius:99px; color:var(--pink-soft);
+  border:1px solid rgba(255,45,120,.45);
+  background:rgba(255,45,120,.07);
+  backdrop-filter:blur(6px);
+  animation:pulse-pill 2.6s ease-in-out infinite;
+}
+.pill:nth-child(2){ animation-delay:.6s; border-color:rgba(168,85,247,.4); color:#c79bff; background:rgba(168,85,247,.08); }
+@keyframes pulse-pill{ 0%,100%{ box-shadow:0 0 0 0 rgba(255,45,120,.0) } 50%{ box-shadow:0 0 16px 0 rgba(255,45,120,.28) } }
+
+/* ---------- ENLACES ---------- */
+.links{ padding:20px 20px 34px; display:flex; flex-direction:column; gap:15px; }
+
+.link{
+  --accent:var(--pink);
+  position:relative; display:flex; align-items:center; gap:14px;
+  padding:15px 18px; border-radius:18px; text-decoration:none;
+  color:var(--text); overflow:hidden;
+  background:var(--card);
+  border:1px solid var(--card-border);
+  backdrop-filter:blur(12px);
+  transition:transform .25s cubic-bezier(.2,.9,.3,1.4), border-color .3s, box-shadow .3s;
+  transform:translateY(24px); opacity:0;              /* entrada en cascada */
+  will-change:transform;
+}
+.link.in{ transform:translateY(0); opacity:1; }
+.link::before{                                        /* resplandor lateral */
+  content:""; position:absolute; left:0; top:12%; bottom:12%; width:3px;
+  border-radius:0 4px 4px 0;
+  background:linear-gradient(180deg,var(--accent),transparent);
+  opacity:.55; transition:opacity .3s, top .3s, bottom .3s;
+}
+.link::after{                                         /* destello al pasar */
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(115deg, transparent 36%, rgba(255,255,255,.10) 50%, transparent 64%);
+  transform:translateX(-120%); transition:transform .55s ease;
+}
+.link:hover{
+  transform:translateY(-4px) scale(1.015);
+  border-color:color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow:0 8px 34px color-mix(in srgb, var(--accent) 28%, transparent), var(--glow);
+}
+.link:hover::after{ transform:translateX(120%); }
+.link:hover .icon{ transform:scale(1.12) rotate(-6deg); }
+.link:active{ transform:translateY(-1px) scale(.99); }
+
+.icon{
+  width:46px; height:46px; flex:none; display:grid; place-items:center;
+  border-radius:13px; color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 13%, transparent);
+  border:1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  transition:transform .3s cubic-bezier(.2,.9,.3,1.6);
+  filter:drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 55%, transparent));
+}
+.icon svg{ width:24px; height:24px; fill:currentColor; }
+
+.txt{ flex:1; min-width:0; }
+.name{ font-weight:600; font-size:1.02rem; letter-spacing:.2px; }
+.desc{ margin-top:2px; color:var(--muted); font-size:.82rem; font-weight:300; }
+
+.arrow{
+  color:var(--muted); flex:none;
+  transition:transform .3s, color .3s;
+}
+.link:hover .arrow{ transform:translateX(5px); color:var(--accent); }
+
+/* índice chic de cada link */
+.link:nth-child(1){ transition-delay:.10s; }
+.link:nth-child(2){ transition-delay:.20s; }
+.link:nth-child(3){ transition-delay:.30s; }
+.link:nth-child(4){ transition-delay:.40s; }
+.link:nth-child(5){ transition-delay:.50s; }
+
+/* onda al hacer click */
+.ripple{
+  position:absolute; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, color-mix(in srgb, var(--accent) 45%, transparent), transparent 65%);
+  transform:scale(0); animation:rip .6s ease-out forwards;
+}
+@keyframes rip{ to{ transform:scale(3.2); opacity:0 } }
+
+/* ---------- FOOTER ---------- */
+footer{
+  margin-top:auto; text-align:center; padding:0 20px 30px;
+  color:var(--muted); font-size:.78rem; font-weight:300;
+}
+footer .heart{ display:inline-block; color:var(--pink); animation:beat 1.4s ease-in-out infinite; }
+@keyframes beat{ 0%,100%{transform:scale(1)} 12%{transform:scale(1.35)} 24%{transform:scale(1)} 36%{transform:scale(1.25)} }
+
+@media (max-width:380px){
+  .avatar-wrap{ width:112px; height:112px; margin-top:-58px; }
+  .link{ padding:13px 15px; border-radius:15px; }
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{ animation:none !important; transition:none !important; }
+  .link{ transform:none; opacity:1; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="fx"></canvas>
+<div id="cursor-glow"></div>
+
+<main class="page">
+
+  <!-- BANNER: guarda tu imagen como "banner.jpg" junto a este archivo -->
+  <div class="banner" id="banner">
+    <img src="banner.jpg" alt="Banner" id="banner-img">
+  </div>
+
+  <!-- AVATAR: guarda tu foto como "avatar.jpg" -->
+  <div class="avatar-wrap" id="avatarWrap">
+    <div class="avatar-fallback">🌙</div>
+    <img class="avatar" alt="Foto de perfil" id="avatar">
+    <span class="badge">🔞 18+</span>
+  </div>
+
+  <section class="shrine">
+    <h1>⸻ Elixir Digital ⸻</h1>
+    <p class="handle">@<b>by Joseph Arts</b></p>
+    <p class="bio" id="bio" data-text="Ilustraciones de waifus ✦ fanarts ✦ arte erótico ✦ comisiones abiertas — entra bajo tu propio riesgo 🔥"></p>
+    <div class="pills">
+      <span class="pill">NSFW,SFW art</span>
+      <span class="pill">Comisiones abiertas</span>
+    </div>
+  </section>
+
+  <section class="links">
+
+    <!-- ✏️ Cambia "https://TU_ENLACE" por tu URL real de cada red -->
+    <a class="link" style="--accent:#f5f5f7" href="https://x.com/joseph19arts" target="_blank" rel="noopener">
+      <span class="icon">
+        <svg viewBox="0 0 24 24"><path d="M18.9 1.6h3.7l-8.1 9.3L24 22.4h-7.6l-5.9-7.8-6.8 7.8H0l8.7-9.9L-.4 1.6h7.8l5.4 7.1 6.1-7.1zm-1.3 18.5h2L4.6 3.7H2.4l15.2 16.4z" transform="translate(0.4 0)"/></svg>
+      </span>
+      <span class="txt"><span class="name">X / Twitter</span><span class="desc">  Dibujos, Sketches y avances con censura suave 😏</span></span>
+      <span class="arrow">→</span>
+    </a>
+
+    <a class="link" style="--accent:var(--pink)" href="https://www.instagram.com/3lixirdigital?obrf=enN1a2gzbDFqY2xy" target="_blank" rel="noopener">
+      <span class="icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 3.3.1 4.8 1.7 4.9 4.9.1 1.3.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 3.2-1.7 4.8-4.9 4.9-1.3.1-1.6.1-4.9.1s-3.6 0-4.8-.1c-3.3-.1-4.8-1.7-4.9-4.9-.1-1.3-.1-1.6-.1-4.8s0-3.6.1-4.8C2.4 4 4 2.4 7.2 2.3c1.2-.1 1.6-.1 4.8-.1zm0 3.7a6.1 6.1 0 1 0 0 12.2 6.1 6.1 0 0 0 0-12.2zm0 2.2a3.9 3.9 0 1 1 0 7.8 3.9 3.9 0 0 1 0-7.8zm6.4-3.7a1.4 1.4 0 1 0 0 2.9 1.4 1.4 0 0 0 0-2.9z"/></svg>
+      </span>
+      <span class="txt"><span class="name">Instagram</span><span class="desc">  Arte SFW, Timelapses 💋</span></span>
+      <span class="arrow">→</span>
+    </a>
+
+    <a class="link" style="--accent:#4fa3ff" href="https://www.pixiv.net/users/130549612" target="_blank" rel="noopener">
+      <span class="icon">
+        <svg viewBox="0 0 24 24"><path d="M4.9 3.1h9.6c4 0 6.9 2.6 6.9 6.3 0 3.9-3 6.6-7.3 6.6h-4v4.9H4.9V3.1zm5.2 3.9v5.3h3.6c2 0 3.3-1 3.3-2.7 0-1.6-1.2-2.6-3.1-2.6h-3.8z"/><path d="M11.2 4.8v1.4h2.3c.9 0 1.6.2 2.2.6a3 3 0 0 1 1.2 2.6c0 1.2-.5 2.1-1.3 2.7-.7.5-1.5.7-2.5.7h-2.4v4.9H8.8V4.8h2.4z" fill="#0a1220" opacity=".0"/></svg>
+      </span>
+      <span class="txt"><span class="name">Pixiv</span><span class="desc">  Galería completa ✦ colección gratis NSFW sin censura 🌶️</span></span>
+      <span class="arrow">→</span>
+    </a>
+
+    <a class="link" style="--accent:#ff424d" href="https://www.patreon.com/elixirDigital?utm_campaign=creatorshare_creator" target="_blank" rel="noopener">
+      <span class="icon">
+        <svg viewBox="0 0 24 24"><path d="M15.386.524c-4.763 0-8.64 3.877-8.64 8.64s3.877 8.64 8.64 8.64c4.76 0 8.636-3.877 8.636-8.64s-3.87-8.64-8.636-8.64zM.088 0h5.72v23.999H.088z"/></svg>
+      </span>
+      <span class="txt"><span class="name">Patreon</span><span class="desc">  Dibujos NSFW  exclusivos 🔓</span></span>
+      <span class="arrow">→</span>
+    </a>
+
+    <a class="link" href="https://www.tiktok.com/@_3lix1rd1g1t4l?_r=1&_t=ZS-9AuNYDT9ba0" target="_blank" rel="noopener" style="--accent:#24f7c2">
+      <span class="icon">
+        <svg viewBox="0 0 24 24"><path d="M16.7 1.9v1.2c.3 2.3 1.8 3.7 4.1 3.9.2 0 .5 0 .7.1v3.4c-1.8 0-3.4-.6-4.9-1.6v7.6c0 4-2.9 6.6-6.6 6.4-3.1-.2-5.6-2.8-5.8-5.9-.2-3.7 2.7-6.6 6.3-6.6.4 0 .8 0 1.1.1v3.6c-.4-.1-.8-.2-1.1-.2-1.7 0-3 1.4-2.9 3.1.1 1.5 1.4 2.7 2.9 2.7 1.4 0 2.4-.9 2.9-2.2.1-.4.2-.9.2-1.4V1.9h3.4z"/></svg>
+      </span>
+      <span class="txt"><span class="name">TikTok</span><span class="desc">  Speedpaints 🫦</span></span>
+      <span class="arrow">→</span>
+    </a>
+
+  </section>
+
+  <footer>
+    Hecho con <span class="heart">♥</span> y mucha imaginación — © 2026 Elixir Digital
+  </footer>
+
+</main>
+
+<script>
+/* ============================================================
+   🔮 ANIMACIONES (partículas, cursor, bio, entradas, ripple)
+   ============================================================ */
+(() => {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* --- imágenes: si existen banner.jpg / avatar.jpg, úsalas --- */
+  const tryImg = (url, cb) => { const i = new Image(); i.onload = () => cb(url); i.src = url; };
+  tryImg('banner.jpg', u => { document.getElementById('banner-img').src = u;
+                              document.getElementById('banner').classList.add('lived'); });
+  tryImg('avatar.jpg', u => { document.getElementById('avatar').src = u;
+                              document.getElementById('avatarWrap').classList.add('lived'); });
+
+  /* --- bio: máquina de escribir --- */
+  const bio = document.getElementById('bio');
+  const text = bio.dataset.text;
+  if (reduced) { bio.textContent = text; }
+  else {
+    const cur = Object.assign(document.createElement('span'), { className: 'cursor' });
+    let i = 0;
+    (function type() {                                  /* escribe al azar, como suspiro 💭 */
+      bio.textContent = text.slice(0, ++i);
+      bio.appendChild(cur);
+      if (i < text.length) setTimeout(type, 28 + Math.random() * 55);
+    })();
+  }
+
+  /* --- cascada de enlaces --- */
+  requestAnimationFrame(() =>
+    document.querySelectorAll('.link').forEach(l => l.classList.add('in')));
+
+  /* --- partículas: “bubble hearts” flotando --- */
+  const cv = document.getElementById('fx'), ctx = cv.getContext('2d');
+  let W, H, parts = [];
+  const resize = () => {
+    W = cv.width = innerWidth; H = cv.height = innerHeight;
+    const n = Math.min(34, Math.floor(W / 42));
+    parts = Array.from({ length: n }, () => spawn(true));
+  };
+  const spawn = (anyY = false) => ({
+    x: Math.random() * W,
+    y: anyY ? Math.random() * H : H + 20,
+    r: 2 + Math.random() * 4,
+    s: .25 + Math.random() * .7,          /* velocidad de subida */
+    w: Math.random() * Math.PI * 2,       /* oscilación lateral */
+    o: .25 + Math.random() * .4,
+    hue: Math.random() < .5 ? '255,45,120' : '168,85,247',
+    heart: Math.random() < .27            /* 27% son corazoncitos */
+  });
+  const drawHeart = (x, y, r, color, a) => {
+    ctx.beginPath();
+    ctx.moveTo(x, y + r * .8);
+    ctx.bezierCurveTo(x - r * 1.6, y - r * .4, x - r * .7, y - r * 1.4, x, y - r * .4);
+    ctx.bezierCurveTo(x + r * .7, y - r * 1.4, x + r * 1.6, y - r * .4, x, y + r * .8);
+    ctx.fillStyle = `rgba(${color},${a})`; ctx.fill();
+  };
+  const tick = () => {
+    ctx.clearRect(0, 0, W, H);
+    for (const p of parts) {
+      p.y -= p.s; p.w += .01; p.x += Math.sin(p.w) * .4;
+      if (p.y < -20) Object.assign(p, spawn());
+      if (p.heart) drawHeart(p.x, p.y, p.r * 1.4, p.hue, p.o);
+      else {
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7);
+        ctx.fillStyle = `rgba(${p.hue},${p.o * .5})`;
+        ctx.shadowColor = `rgba(${p.hue},.8)`; ctx.shadowBlur = 8;
+        ctx.fill(); ctx.shadowBlur = 0;
+      }
+    }
+    requestAnimationFrame(tick);
+  };
+  resize(); addEventListener('resize', resize);
+  if (!reduced) tick(); else { /* versión estática en modo reducido */
+    for (const p of parts) { ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7);
+      ctx.fillStyle = `rgba(${p.hue},${p.o * .4})`; ctx.fill(); }
+  }
+
+  /* --- halo del cursor --- */
+  const glow = document.getElementById('cursor-glow');
+  addEventListener('pointermove', e => {
+    glow.style.left = e.clientX + 'px';
+    glow.style.top  = e.clientY + 'px';
+  }, { passive: true });
+
+  /* --- onda al tocar un enlace --- */
+  document.querySelectorAll('.link').forEach(l => l.addEventListener('pointerdown', e => {
+    const d = Math.max(l.offsetWidth, l.offsetHeight) * 1.2;
+    const r = document.createElement('span');
+    r.className = 'ripple';
+    const b = l.getBoundingClientRect();
+    r.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - b.left - d / 2}px;top:${e.clientY - b.top - d / 2}px`;
+    l.appendChild(r);
+    setTimeout(() => r.remove(), 650);
+  }));
+})();
+</script>
+</body>
+</html>
